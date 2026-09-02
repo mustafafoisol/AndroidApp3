@@ -1,5 +1,6 @@
 package com.mustafafoisol.androidapp3.pdf
 
+import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -45,7 +46,12 @@ object PdfBuilder {
 
     private val BRANDS = listOf("BOSCH", "DeWALT", "INGCO", "HARDEN", "TOPTUL", "YATO")
 
-    fun render(invoice: Invoice): ByteArray {
+    /**
+     * @param background scanned letterhead to lay under the content, full-bleed. When
+     *   present the printed logo strip and brand strip come from the artwork, so this
+     *   renderer stops drawing its own approximations of them.
+     */
+    fun render(invoice: Invoice, background: Bitmap? = null): ByteArray {
         val document = PdfDocument()
         val pageInfo = PdfDocument.PageInfo.Builder(PAGE_WIDTH_PT, PAGE_HEIGHT_PT, 1).create()
         val page = document.startPage(pageInfo)
@@ -54,7 +60,7 @@ object PdfBuilder {
         canvas.drawColor(Color.WHITE)
         canvas.save()
         canvas.scale(SCALE, SCALE)
-        drawSheet(canvas, invoice)
+        drawSheet(canvas, invoice, background)
         canvas.restore()
 
         document.finishPage(page)
@@ -65,20 +71,34 @@ object PdfBuilder {
         return out.toByteArray()
     }
 
-    private fun drawSheet(canvas: Canvas, invoice: Invoice) {
-        val headerBottom = drawHeader(canvas)
+    private fun drawSheet(canvas: Canvas, invoice: Invoice, background: Bitmap?) {
+        if (background != null) {
+            canvas.drawBitmap(
+                background,
+                null,
+                RectF(0f, 0f, SHEET_W, SHEET_H),
+                Paint(Paint.FILTER_BITMAP_FLAG)
+            )
+        }
+
+        val headerBottom = if (background == null) drawHeader(canvas) else headerRuleY()
         val infoBottom = drawInfo(canvas, invoice, headerBottom)
         val titleBottom = drawTitle(canvas, invoice, infoBottom)
         drawTable(canvas, invoice, titleBottom)
-        val brandTop = drawBrandFooter(canvas)
+        val brandTop = if (background == null) drawBrandFooter(canvas) else brandRuleY()
         drawSignatures(canvas, invoice, brandTop)
     }
 
     // ---- header -------------------------------------------------------------
 
+    private const val LOGO_H = 88f
+
+    /** Baseline the letterhead rule sits on, whether drawn here or supplied by artwork. */
+    private fun headerRuleY() = PAD_T + LOGO_H + 12f
+
     private fun drawHeader(canvas: Canvas): Float {
         val logoW = 74f
-        val logoH = 88f
+        val logoH = LOGO_H
         val logoRect = RectF(CONTENT_L, PAD_T, CONTENT_L + logoW, PAD_T + logoH)
 
         // Softly rounded on the left, heavily rounded on the right, forming the D mark.
@@ -114,7 +134,7 @@ object PdfBuilder {
         y = drawTop(canvas, "One stop solution for all kind of industrial goods", centerX, y, taglinePaint) + 6f
         drawTop(canvas, CONTACT_LINE, centerX, y, contactPaint)
 
-        val ruleY = PAD_T + logoH + 12f
+        val ruleY = headerRuleY()
         canvas.drawLine(CONTENT_L, ruleY, CONTENT_R, ruleY, stroke(ORANGE, 2f))
         return ruleY
     }
@@ -252,11 +272,16 @@ object PdfBuilder {
 
     // ---- signatures and brand strip ----------------------------------------
 
+    private fun brandPaint() = text(13f, Typeface.DEFAULT_BOLD, BRAND_GREY)
+
+    /** Top of the brand strip, whether drawn here or supplied by artwork. */
+    private fun brandRuleY() = SHEET_H - PAD_B - lineHeight(brandPaint()) - 10f
+
     private fun drawBrandFooter(canvas: Canvas): Float {
-        val paint = text(13f, Typeface.DEFAULT_BOLD, BRAND_GREY)
+        val paint = brandPaint()
         val widths = BRANDS.map { paint.measureText(it) }
-        val textTop = SHEET_H - PAD_B - lineHeight(paint)
-        val ruleY = textTop - 10f
+        val ruleY = brandRuleY()
+        val textTop = ruleY + 10f
 
         canvas.drawLine(CONTENT_L, ruleY, CONTENT_R, ruleY, stroke(ORANGE, 2f))
 

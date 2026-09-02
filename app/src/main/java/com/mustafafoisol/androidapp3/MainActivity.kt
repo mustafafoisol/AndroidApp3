@@ -15,9 +15,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mustafafoisol.androidapp3.data.InvoiceViewModel
 import com.mustafafoisol.androidapp3.pdf.PdfBuilder
+import com.mustafafoisol.androidapp3.pdf.Templates
 import com.mustafafoisol.androidapp3.ui.screens.FormScreen
 import com.mustafafoisol.androidapp3.ui.screens.PreviewScreen
 import com.mustafafoisol.androidapp3.ui.theme.AndroidApp3Theme
@@ -36,6 +38,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun InvoiceApp(viewModel: InvoiceViewModel = viewModel()) {
+    val context = LocalContext.current
     val invoice = viewModel.invoice
     var pdfBytes by remember { mutableStateOf<ByteArray?>(null) }
 
@@ -60,7 +63,10 @@ private fun InvoiceApp(viewModel: InvoiceViewModel = viewModel()) {
                 onRemoveItem = viewModel::removeItem,
                 onCustSign = viewModel::setCustSign,
                 onSellerSign = viewModel::setSellerSign,
-                onGenerate = { pdfBytes = PdfBuilder.render(invoice) }
+                onGenerate = {
+                    val background = Templates.load(context, invoice.docType)
+                    pdfBytes = PdfBuilder.render(invoice, background)
+                }
             )
         }
     } else {
