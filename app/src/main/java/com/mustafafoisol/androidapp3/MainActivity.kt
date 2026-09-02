@@ -2,20 +2,24 @@ package com.mustafafoisol.androidapp3
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.mustafafoisol.androidapp3.data.InvoiceViewModel
+import com.mustafafoisol.androidapp3.pdf.PdfBuilder
+import com.mustafafoisol.androidapp3.ui.screens.FormScreen
+import com.mustafafoisol.androidapp3.ui.screens.PreviewScreen
 import com.mustafafoisol.androidapp3.ui.theme.AndroidApp3Theme
 
 class MainActivity : ComponentActivity() {
@@ -24,36 +28,49 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             AndroidApp3Theme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    HomeScreen(modifier = Modifier.padding(innerPadding))
-                }
+                InvoiceApp()
             }
         }
     }
 }
 
 @Composable
-fun HomeScreen(modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier.fillMaxSize().padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = "AndroidApp3",
-            style = MaterialTheme.typography.headlineMedium
-        )
-        Text(
-            text = "Scaffold ready. Drop your designs in /ui to start building screens.",
-            style = MaterialTheme.typography.bodyMedium
-        )
-    }
-}
+private fun InvoiceApp(viewModel: InvoiceViewModel = viewModel()) {
+    val invoice = viewModel.invoice
+    var pdfBytes by remember { mutableStateOf<ByteArray?>(null) }
 
-@Preview(showBackground = true)
-@Composable
-private fun HomeScreenPreview() {
-    AndroidApp3Theme {
-        HomeScreen()
+    val root = Modifier.fillMaxSize().safeDrawingPadding().imePadding()
+    val bytes = pdfBytes
+
+    if (bytes == null) {
+        Box(modifier = root) {
+            FormScreen(
+                invoice = invoice,
+                onDocType = viewModel::setDocType,
+                onName = viewModel::setName,
+                onAddress = viewModel::setAddress,
+                onMobile = viewModel::setMobile,
+                onSerial = viewModel::setSerial,
+                onRpr = viewModel::setRpr,
+                onDate = viewModel::setDate,
+                onItemDesc = viewModel::setItemDesc,
+                onItemQty = viewModel::setItemQty,
+                onItemPrice = viewModel::setItemPrice,
+                onAddItem = viewModel::addItem,
+                onRemoveItem = viewModel::removeItem,
+                onCustSign = viewModel::setCustSign,
+                onSellerSign = viewModel::setSellerSign,
+                onGenerate = { pdfBytes = PdfBuilder.render(invoice) }
+            )
+        }
+    } else {
+        BackHandler { pdfBytes = null }
+        Box(modifier = root) {
+            PreviewScreen(
+                fileName = invoice.fileName,
+                pdfBytes = bytes,
+                onBack = { pdfBytes = null }
+            )
+        }
     }
 }
