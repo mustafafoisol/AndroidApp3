@@ -4,6 +4,13 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+// Release signing is driven by the environment so the keystore never enters the repo.
+// CI decodes it from a secret; absent it, release builds stay unsigned and only the
+// debug APK is publishable.
+val keystoreFile = rootProject.file("keystore/release.jks")
+val keystorePassword: String? = System.getenv("KEYSTORE_PASSWORD")
+val releaseSigningAvailable = keystoreFile.exists() && !keystorePassword.isNullOrBlank()
+
 android {
     namespace = "com.mustafafoisol.androidapp3"
     compileSdk = 35
@@ -12,11 +19,23 @@ android {
         applicationId = "com.mustafafoisol.androidapp3"
         minSdk = 28          // Android 9 (Pie)
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
+    }
+
+    signingConfigs {
+        if (releaseSigningAvailable) {
+            create("release") {
+                storeFile = keystoreFile
+                storeType = "PKCS12"
+                storePassword = keystorePassword
+                keyAlias = System.getenv("KEY_ALIAS") ?: "release"
+                keyPassword = System.getenv("KEY_PASSWORD") ?: keystorePassword
+            }
+        }
     }
 
     buildTypes {
@@ -31,6 +50,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 
