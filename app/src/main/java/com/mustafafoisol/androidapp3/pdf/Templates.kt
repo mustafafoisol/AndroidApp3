@@ -8,9 +8,10 @@ import com.mustafafoisol.androidapp3.data.DocType
 /**
  * Scanned letterhead artwork laid under the generated page.
  *
- * Drop the blank artwork into `res/drawable-nodpi` as `template_challan.png` and
- * `template_memo.png`. Either may be absent, in which case [PdfBuilder] falls back to
- * drawing the letterhead and brand strip itself.
+ * Drop the blank artwork into `res/drawable-nodpi` as `template_letterhead.png`. The
+ * artwork carries only the header strip, watermark and brand footer, so one file serves
+ * both document types; `template_challan.png` / `template_memo.png` override it per type
+ * if they ever need to differ. With none present [PdfBuilder] draws its own letterhead.
  */
 object Templates {
 
@@ -20,10 +21,15 @@ object Templates {
     private val cache = mutableMapOf<DocType, Bitmap?>()
 
     fun load(context: Context, docType: DocType): Bitmap? = cache.getOrPut(docType) {
-        val name = if (docType == DocType.MEMO) "template_memo" else "template_challan"
+        val perType = if (docType == DocType.MEMO) "template_memo" else "template_challan"
+        val resId = resolve(context, perType) ?: resolve(context, "template_letterhead")
+        if (resId == null) null else decodeScaled(context, resId)
+    }
+
+    private fun resolve(context: Context, name: String): Int? {
         @Suppress("DiscouragedApi")
         val resId = context.resources.getIdentifier(name, "drawable", context.packageName)
-        if (resId == 0) null else decodeScaled(context, resId)
+        return if (resId == 0) null else resId
     }
 
     private fun decodeScaled(context: Context, resId: Int): Bitmap? {
