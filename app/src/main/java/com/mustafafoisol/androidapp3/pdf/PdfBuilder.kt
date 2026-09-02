@@ -47,6 +47,15 @@ object PdfBuilder {
     private val BRANDS = listOf("BOSCH", "DeWALT", "INGCO", "HARDEN", "TOPTUL", "YATO")
 
     /**
+     * Where the letterhead artwork puts its two rules, as a fraction of sheet height,
+     * measured off the 1131x1600 scan in ui/templates. The header rule lands within a
+     * pixel of the drawn fallback; the brand strip sits noticeably higher, so content
+     * has to stop above it rather than at the drawn position.
+     */
+    private const val ART_HEADER_RULE = 192f / 1600f
+    private const val ART_BRAND_RULE = 1495f / 1600f
+
+    /**
      * @param background scanned letterhead to lay under the content, full-bleed. When
      *   present the printed logo strip and brand strip come from the artwork, so this
      *   renderer stops drawing its own approximations of them.
@@ -81,11 +90,11 @@ object PdfBuilder {
             )
         }
 
-        val headerBottom = if (background == null) drawHeader(canvas) else headerRuleY()
+        val headerBottom = if (background == null) drawHeader(canvas) else SHEET_H * ART_HEADER_RULE
         val infoBottom = drawInfo(canvas, invoice, headerBottom)
         val titleBottom = drawTitle(canvas, invoice, infoBottom)
         drawTable(canvas, invoice, titleBottom)
-        val brandTop = if (background == null) drawBrandFooter(canvas) else brandRuleY()
+        val brandTop = if (background == null) drawBrandFooter(canvas) else SHEET_H * ART_BRAND_RULE
         drawSignatures(canvas, invoice, brandTop)
     }
 
